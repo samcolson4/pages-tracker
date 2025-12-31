@@ -150,8 +150,7 @@ function App() {
 
   return (
     <div className="app">
-      <h1>Reading Tracker</h1>
-      <h2 className="year-title">2026</h2>
+      <h1>Reading Tracker 2026</h1>
       <div className="calendar-container">
         {months.map((monthDays, monthIndex) => {
           const firstValidDay = monthDays.find(day => isDateValid(day.date))

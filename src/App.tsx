@@ -135,9 +135,64 @@ function App() {
     return date.getTime() > 0
   }
 
+  // Calculate current streak: count backwards from today, stop at first unclicked day
+  const calculateStreak = (): number => {
+    // Get today's date
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const startOf2026 = new Date(2026, 0, 1)
+    startOf2026.setHours(0, 0, 0, 0)
+
+    // If today is before 2026, no streak
+    if (today < startOf2026) return 0
+
+    // Start counting from today (or start of 2026 if today is after 2026)
+    const startDate = today > new Date(2026, 11, 31) ? new Date(2026, 11, 31) : today
+    const checkDate = new Date(startDate)
+    checkDate.setHours(0, 0, 0, 0)
+
+    let streak = 0
+
+    // Count backwards from today
+    while (checkDate >= startOf2026) {
+      const dateKey = formatDateKey(checkDate)
+
+      // If this day is clicked, increment streak and continue
+      if (readDays.has(dateKey)) {
+        streak++
+        // Move to previous day
+        checkDate.setDate(checkDate.getDate() - 1)
+        checkDate.setHours(0, 0, 0, 0)
+      } else {
+        // Stop counting when we hit a day that wasn't clicked (sad face)
+        break
+      }
+    }
+
+    return streak
+  }
+
+  // Check if a day is "missed" (not clicked and in the past)
+  const isMissedDay = (date: Date): boolean => {
+    const dateKey = formatDateKey(date)
+    // Only show sad face if this day is not clicked
+    if (readDays.has(dateKey)) return false
+
+    // Check if the date is in the past (before today)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset time to start of day for comparison
+    const checkDate = new Date(date)
+    checkDate.setHours(0, 0, 0, 0)
+
+    // Show sad face if date is in the past and not clicked
+    return checkDate < today
+  }
+
   const months = generateCalendar()
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                       'July', 'August', 'September', 'October', 'November', 'December']
+  const streak = calculateStreak()
 
   if (loading) {
     return (
@@ -150,7 +205,12 @@ function App() {
 
   return (
     <div className="app">
-      <h1>Reading Tracker 2026</h1>
+      <h1>Reading Tracker</h1>
+      <h2 className="year-title">2026</h2>
+      <div className="streak-counter">
+        <span className="streak-label">Current Streak:</span>
+        <span className="streak-number">{streak} {streak === 1 ? 'day' : 'days'}</span>
+      </div>
       <div className="calendar-container">
         {months.map((monthDays, monthIndex) => {
           const firstValidDay = monthDays.find(day => isDateValid(day.date))
@@ -170,18 +230,21 @@ function App() {
                   const dateKey = formatDateKey(day.date)
                   const dayColor = readDays.get(dateKey)
                   const isRead = dayColor !== undefined
+                  const missed = isMissedDay(day.date)
 
                   return (
                     <div
                       key={dayIndex}
-                      className={`day-dot ${isRead ? 'filled' : 'outlined'}`}
+                      className={`day-dot ${isRead ? 'filled' : 'outlined'} ${missed ? 'missed' : ''}`}
                       style={isRead ? {
                         backgroundColor: dayColor,
                         borderColor: dayColor
                       } : undefined}
                       onClick={() => toggleDay(dateKey)}
                       title={day.date.toLocaleDateString()}
-                    />
+                    >
+                      {missed && !isRead ? '😢' : ''}
+                    </div>
                   )
                 })}
               </div>

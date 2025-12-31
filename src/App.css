@@ -28,12 +28,15 @@
 .month {
   background: rgba(0, 0, 0, 0.02);
   border-radius: 8px;
-  padding: 1.5rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .month-title {
   font-size: 1.25rem;
-  margin-bottom: 1rem;
+  margin: 1.5rem 0 1rem 0;
   text-align: center;
   font-weight: 600;
 }
@@ -44,6 +47,8 @@
   gap: 0.5rem;
   justify-items: center;
   align-items: center;
+  align-content: center;
+  margin-bottom: 1.5rem;
 }
 
 .day-dot {
@@ -52,6 +57,9 @@
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .day-dot.outlined {
@@ -59,9 +67,7 @@
   background: transparent;
 }
 
-.day-dot.filled {
-  /* Color is set via inline style */
-}
+/* .day-dot.filled - Color is set via inline style */
 
 .day-dot:hover {
   transform: scale(1.1);
@@ -70,4 +76,7 @@
 .day-empty {
   width: 16px;
   height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

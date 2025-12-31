@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { collection, doc, getDoc, setDoc, deleteDoc, onSnapshot, DocumentSnapshot } from 'firebase/firestore'
+import { db } from './firebase'
 import './App.css'
 
 interface DayData {
@@ -8,30 +10,63 @@ interface DayData {
 
 function App() {
   const [readDays, setReadDays] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
 
-  // Load from localStorage on mount
+  // Load from Firestore on mount and listen for changes
   useEffect(() => {
-    const saved = localStorage.getItem('readDays')
-    if (saved) {
-      setReadDays(new Set(JSON.parse(saved)))
-    }
+    const readDaysRef = collection(db, 'readDays')
+    const docRef = doc(readDaysRef, '2026') // Store all 2026 days in one document
+
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(docRef, (docSnapshot: DocumentSnapshot) => {
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data()
+        setReadDays(new Set(data.days || []))
+      } else {
+        setReadDays(new Set())
+      }
+      setLoading(false)
+    }, (error: Error) => {
+      console.error('Error loading read days:', error)
+      setLoading(false)
+    })
+
+    return () => unsubscribe()
   }, [])
 
-  // Save to localStorage whenever readDays changes
-  useEffect(() => {
-    localStorage.setItem('readDays', JSON.stringify(Array.from(readDays)))
-  }, [readDays])
+  const toggleDay = async (dateKey: string) => {
+    try {
+      const readDaysRef = collection(db, 'readDays')
+      const docRef = doc(readDaysRef, '2026')
 
-  const toggleDay = (dateKey: string) => {
-    setReadDays(prev => {
-      const next = new Set(prev)
-      if (next.has(dateKey)) {
-        next.delete(dateKey)
+      // Get current document
+      const docSnapshot = await getDoc(docRef)
+      const currentDays = docSnapshot.exists()
+        ? new Set(docSnapshot.data().days || [])
+        : new Set<string>()
+
+      // Toggle the day
+      const nextDays = new Set(currentDays)
+      if (nextDays.has(dateKey)) {
+        nextDays.delete(dateKey)
       } else {
-        next.add(dateKey)
+        nextDays.add(dateKey)
       }
-      return next
-    })
+
+      // Save to Firestore or delete if empty
+      if (nextDays.size === 0) {
+        // Delete the document if no days are selected
+        await deleteDoc(docRef)
+      } else {
+        // Update the document with the new days array
+        await setDoc(docRef, {
+          days: Array.from(nextDays),
+          updatedAt: new Date().toISOString()
+        })
+      }
+    } catch (error) {
+      console.error('Error toggling day:', error)
+    }
   }
 
   const generateCalendar = () => {
@@ -82,9 +117,19 @@ function App() {
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                       'July', 'August', 'September', 'October', 'November', 'December']
 
+  if (loading) {
+    return (
+      <div className="app">
+        <h1>Reading Tracker</h1>
+        <p>Loading...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="app">
-      <h1>Reading Tracker 2026</h1>
+      <h1>Reading Tracker</h1>
+      <h2 className="year-title">2026</h2>
       <div className="calendar-container">
         {months.map((monthDays, monthIndex) => {
           const firstValidDay = monthDays.find(day => isDateValid(day.date))

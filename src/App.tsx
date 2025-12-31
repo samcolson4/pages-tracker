@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, doc, getDoc, setDoc, deleteDoc, onSnapshot, DocumentSnapshot } from 'firebase/firestore'
+import { collection, doc, setDoc, deleteDoc, onSnapshot, DocumentSnapshot } from 'firebase/firestore'
 import { db } from './firebase'
 import { colors } from './colors'
 import './App.css'
@@ -55,17 +55,9 @@ function App() {
       const readDaysRef = collection(db, 'readDays')
       const docRef = doc(readDaysRef, '2026')
 
-      // Get current document
-      const docSnapshot = await getDoc(docRef)
-      const currentDays = new Map<string, string>()
-      if (docSnapshot.exists()) {
-        const data = docSnapshot.data()
-        if (data.days && Array.isArray(data.days)) {
-          data.days.forEach((day: { date: string; color: string }) => {
-            currentDays.set(day.date, day.color)
-          })
-        }
-      }
+      // Use current local state instead of reading from Firestore
+      // The real-time listener keeps it in sync, so it's more reliable
+      const currentDays = new Map(readDays)
 
       // Toggle the day
       const nextDays = new Map(currentDays)

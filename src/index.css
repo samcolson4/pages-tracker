@@ -18,6 +18,13 @@
   --color-green: #1C7C54;      /* Turf Green */
   --color-brown: #B2945B;      /* Camel */
   --color-blue: #197BBD;       /* Bright Teal Blue */
+  --color-muted-teal: #4A9D8F; /* Muted Teal */
+  --color-dusty-coral: #E76F73; /* Dusty Coral */
+  --color-slate-blue: #5C7FA3; /* Slate Blue */
+  --color-charcoal: #2E2E2E;   /* Charcoal */
+  --color-mustard-gold: #D4A72C; /* Mustard Gold */
+  --color-terracotta: #C05A3D; /* Terracotta */
+  --color-sand: #D8C8A3;      /* Sand */
 }
 
 body {

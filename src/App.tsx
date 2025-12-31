@@ -9,9 +9,9 @@ interface DayData {
   read: boolean
 }
 
-// Get a random color from the palette
+// Get a random color from the palette (excluding white)
 const getRandomColor = (): string => {
-  const colorValues = Object.values(colors)
+  const colorValues = Object.values(colors).filter(color => color !== '#FAFAFA')
   const randomIndex = Math.floor(Math.random() * colorValues.length)
   return colorValues[randomIndex]
 }

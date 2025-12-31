@@ -1,198 +1,14 @@
-import { useState, useEffect } from 'react'
-import { collection, doc, setDoc, deleteDoc, onSnapshot, DocumentSnapshot } from 'firebase/firestore'
-import { db } from './firebase'
-import { colors } from './colors'
 import './App.css'
-
-interface DayData {
-  date: Date
-  read: boolean
-}
-
-// Get a random color from the palette (excluding white)
-const getRandomColor = (): string => {
-  const colorValues = Object.values(colors).filter(color => color !== '#FAFAFA')
-  const randomIndex = Math.floor(Math.random() * colorValues.length)
-  return colorValues[randomIndex]
-}
+import { useReadDays } from './hooks/useReadDays'
+import { generateCalendar } from './utils/calendarUtils'
+import { formatDateKey, isDateValid } from './utils/dateUtils'
+import { calculateStreak, isMissedDay } from './utils/streakUtils'
+import { MONTH_NAMES, YEAR } from './constants'
 
 function App() {
-  // Map of dateKey -> color hex
-  const [readDays, setReadDays] = useState<Map<string, string>>(new Map())
-  const [loading, setLoading] = useState(true)
-
-  // Load from Firestore on mount and listen for changes
-  useEffect(() => {
-    const readDaysRef = collection(db, 'readDays')
-    const docRef = doc(readDaysRef, '2026') // Store all 2026 days in one document
-
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(docRef, (docSnapshot: DocumentSnapshot) => {
-      if (docSnapshot.exists()) {
-        const data = docSnapshot.data()
-        // Convert array of {date, color} objects to Map
-        const daysMap = new Map<string, string>()
-        if (data.days && Array.isArray(data.days)) {
-          data.days.forEach((day: { date: string; color: string }) => {
-            daysMap.set(day.date, day.color)
-          })
-        }
-        setReadDays(daysMap)
-      } else {
-        setReadDays(new Map())
-      }
-      setLoading(false)
-    }, (error: Error) => {
-      console.error('Error loading read days:', error)
-      setLoading(false)
-    })
-
-    return () => unsubscribe()
-  }, [])
-
-  const toggleDay = async (dateKey: string) => {
-    try {
-      const readDaysRef = collection(db, 'readDays')
-      const docRef = doc(readDaysRef, '2026')
-
-      // Use current local state instead of reading from Firestore
-      // The real-time listener keeps it in sync, so it's more reliable
-      const currentDays = new Map(readDays)
-
-      // Toggle the day
-      const nextDays = new Map(currentDays)
-      if (nextDays.has(dateKey)) {
-        // Remove the day
-        nextDays.delete(dateKey)
-      } else {
-        // Add the day with a random color
-        nextDays.set(dateKey, getRandomColor())
-      }
-
-      // Save to Firestore or delete if empty
-      if (nextDays.size === 0) {
-        // Delete the document if no days are selected
-        await deleteDoc(docRef)
-      } else {
-        // Convert Map to array of {date, color} objects
-        const daysArray = Array.from(nextDays.entries()).map(([date, color]) => ({
-          date,
-          color
-        }))
-
-        // Update the document with the new days array
-        await setDoc(docRef, {
-          days: daysArray,
-          updatedAt: new Date().toISOString()
-        })
-      }
-    } catch (error) {
-      console.error('Error toggling day:', error)
-    }
-  }
-
-  const generateCalendar = () => {
-    const months: DayData[][] = []
-    const startDate = new Date(2026, 0, 1) // January 1st, 2026
-    const endDate = new Date(2026, 11, 31) // December 31st, 2026
-
-    let currentDate = new Date(startDate)
-
-    while (currentDate <= endDate) {
-      const monthDays: DayData[] = []
-      const month = currentDate.getMonth()
-
-      // Get first day of month
-      const firstDay = new Date(currentDate.getFullYear(), month, 1)
-      const lastDay = new Date(currentDate.getFullYear(), month + 1, 0)
-
-      // Add empty cells for days before the first day of the month
-      const firstDayOfWeek = firstDay.getDay()
-      for (let i = 0; i < firstDayOfWeek; i++) {
-        monthDays.push({ date: new Date(0), read: false })
-      }
-
-      // Add all days of the month
-      for (let day = 1; day <= lastDay.getDate(); day++) {
-        const date = new Date(currentDate.getFullYear(), month, day)
-        monthDays.push({ date, read: false })
-      }
-
-      months.push(monthDays)
-
-      // Move to next month
-      currentDate = new Date(currentDate.getFullYear(), month + 1, 1)
-    }
-
-    return months
-  }
-
-  const formatDateKey = (date: Date): string => {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-  }
-
-  const isDateValid = (date: Date): boolean => {
-    return date.getTime() > 0
-  }
-
-  // Calculate current streak: count backwards from today, stop at first unclicked day
-  const calculateStreak = (): number => {
-    // Get today's date
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const startOf2026 = new Date(2026, 0, 1)
-    startOf2026.setHours(0, 0, 0, 0)
-
-    // If today is before 2026, no streak
-    if (today < startOf2026) return 0
-
-    // Start counting from today (or start of 2026 if today is after 2026)
-    const startDate = today > new Date(2026, 11, 31) ? new Date(2026, 11, 31) : today
-    const checkDate = new Date(startDate)
-    checkDate.setHours(0, 0, 0, 0)
-
-    let streak = 0
-
-    // Count backwards from today
-    while (checkDate >= startOf2026) {
-      const dateKey = formatDateKey(checkDate)
-
-      // If this day is clicked, increment streak and continue
-      if (readDays.has(dateKey)) {
-        streak++
-        // Move to previous day
-        checkDate.setDate(checkDate.getDate() - 1)
-        checkDate.setHours(0, 0, 0, 0)
-      } else {
-        // Stop counting when we hit a day that wasn't clicked (sad face)
-        break
-      }
-    }
-
-    return streak
-  }
-
-  // Check if a day is "missed" (not clicked and in the past)
-  const isMissedDay = (date: Date): boolean => {
-    const dateKey = formatDateKey(date)
-    // Only show sad face if this day is not clicked
-    if (readDays.has(dateKey)) return false
-
-    // Check if the date is in the past (before today)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0) // Reset time to start of day for comparison
-    const checkDate = new Date(date)
-    checkDate.setHours(0, 0, 0, 0)
-
-    // Show sad face if date is in the past and not clicked
-    return checkDate < today
-  }
-
-  const months = generateCalendar()
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 'December']
-  const streak = calculateStreak()
+  const { readDays, loading, toggleDay } = useReadDays()
+  const months = generateCalendar(YEAR)
+  const streak = calculateStreak(readDays, YEAR)
 
   if (loading) {
     return (
@@ -215,7 +31,7 @@ function App() {
           const firstValidDay = monthDays.find(day => isDateValid(day.date))
           if (!firstValidDay) return null
 
-          const monthName = monthNames[firstValidDay.date.getMonth()]
+          const monthName = MONTH_NAMES[firstValidDay.date.getMonth()]
 
           return (
             <div key={monthIndex} className="month">
@@ -229,7 +45,7 @@ function App() {
                   const dateKey = formatDateKey(day.date)
                   const dayColor = readDays.get(dateKey)
                   const isRead = dayColor !== undefined
-                  const missed = isMissedDay(day.date)
+                  const missed = isMissedDay(day.date, readDays)
 
                   return (
                     <div

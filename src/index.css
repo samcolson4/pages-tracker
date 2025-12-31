@@ -11,6 +11,13 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Color palette */
+  --color-white: #FAFAFA;      /* Bright Snow */
+  --color-red: #F93943;        /* Strawberry Red */
+  --color-green: #1C7C54;      /* Turf Green */
+  --color-brown: #B2945B;      /* Camel */
+  --color-blue: #197BBD;       /* Bright Teal Blue */
 }
 
 body {

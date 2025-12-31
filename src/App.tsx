@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { collection, doc, getDoc, setDoc, deleteDoc, onSnapshot, DocumentSnapshot } from 'firebase/firestore'
 import { db } from './firebase'
+import { colors } from './colors'
 import './App.css'
 
 interface DayData {
@@ -8,8 +9,16 @@ interface DayData {
   read: boolean
 }
 
+// Get a random color from the palette
+const getRandomColor = (): string => {
+  const colorValues = Object.values(colors)
+  const randomIndex = Math.floor(Math.random() * colorValues.length)
+  return colorValues[randomIndex]
+}
+
 function App() {
-  const [readDays, setReadDays] = useState<Set<string>>(new Set())
+  // Map of dateKey -> color hex
+  const [readDays, setReadDays] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
 
   // Load from Firestore on mount and listen for changes
@@ -21,9 +30,16 @@ function App() {
     const unsubscribe = onSnapshot(docRef, (docSnapshot: DocumentSnapshot) => {
       if (docSnapshot.exists()) {
         const data = docSnapshot.data()
-        setReadDays(new Set(data.days || []))
+        // Convert array of {date, color} objects to Map
+        const daysMap = new Map<string, string>()
+        if (data.days && Array.isArray(data.days)) {
+          data.days.forEach((day: { date: string; color: string }) => {
+            daysMap.set(day.date, day.color)
+          })
+        }
+        setReadDays(daysMap)
       } else {
-        setReadDays(new Set())
+        setReadDays(new Map())
       }
       setLoading(false)
     }, (error: Error) => {
@@ -41,16 +57,24 @@ function App() {
 
       // Get current document
       const docSnapshot = await getDoc(docRef)
-      const currentDays = docSnapshot.exists()
-        ? new Set(docSnapshot.data().days || [])
-        : new Set<string>()
+      const currentDays = new Map<string, string>()
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data()
+        if (data.days && Array.isArray(data.days)) {
+          data.days.forEach((day: { date: string; color: string }) => {
+            currentDays.set(day.date, day.color)
+          })
+        }
+      }
 
       // Toggle the day
-      const nextDays = new Set(currentDays)
+      const nextDays = new Map(currentDays)
       if (nextDays.has(dateKey)) {
+        // Remove the day
         nextDays.delete(dateKey)
       } else {
-        nextDays.add(dateKey)
+        // Add the day with a random color
+        nextDays.set(dateKey, getRandomColor())
       }
 
       // Save to Firestore or delete if empty
@@ -58,9 +82,15 @@ function App() {
         // Delete the document if no days are selected
         await deleteDoc(docRef)
       } else {
+        // Convert Map to array of {date, color} objects
+        const daysArray = Array.from(nextDays.entries()).map(([date, color]) => ({
+          date,
+          color
+        }))
+
         // Update the document with the new days array
         await setDoc(docRef, {
-          days: Array.from(nextDays),
+          days: daysArray,
           updatedAt: new Date().toISOString()
         })
       }
@@ -128,7 +158,8 @@ function App() {
 
   return (
     <div className="app">
-      <h1>Reading Tracker 2026</h1>
+      <h1>Reading Tracker</h1>
+      <h2 className="year-title">2026</h2>
       <div className="calendar-container">
         {months.map((monthDays, monthIndex) => {
           const firstValidDay = monthDays.find(day => isDateValid(day.date))
@@ -146,12 +177,17 @@ function App() {
                   }
 
                   const dateKey = formatDateKey(day.date)
-                  const isRead = readDays.has(dateKey)
+                  const dayColor = readDays.get(dateKey)
+                  const isRead = dayColor !== undefined
 
                   return (
                     <div
                       key={dayIndex}
                       className={`day-dot ${isRead ? 'filled' : 'outlined'}`}
+                      style={isRead ? {
+                        backgroundColor: dayColor,
+                        borderColor: dayColor
+                      } : undefined}
                       onClick={() => toggleDay(dateKey)}
                       title={day.date.toLocaleDateString()}
                     />

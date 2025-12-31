@@ -60,13 +60,11 @@
 }
 
 .day-dot.filled {
-  background: #888;
-  border: 2px solid #888;
+  /* Color is set via inline style */
 }
 
 .day-dot:hover {
   transform: scale(1.1);
-  border-color: #888;
 }
 
 .day-empty {

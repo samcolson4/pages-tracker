@@ -1,7 +1,7 @@
 import './App.css'
 import { useReadDays } from './hooks/useReadDays'
 import { generateCalendar } from './utils/calendarUtils'
-import { formatDateKey, isDateValid } from './utils/dateUtils'
+import { formatDateKey, isDateValid, normalizeDate } from './utils/dateUtils'
 import { calculateStreak, isMissedDay } from './utils/streakUtils'
 import { MONTH_NAMES, YEAR } from './constants'
 
@@ -9,6 +9,7 @@ function App() {
   const { readDays, loading, toggleDay } = useReadDays()
   const months = generateCalendar(YEAR)
   const streak = calculateStreak(readDays, YEAR)
+  const today = normalizeDate(new Date())
 
   if (loading) {
     return (
@@ -46,11 +47,12 @@ function App() {
                   const dayColor = readDays.get(dateKey)
                   const isRead = dayColor !== undefined
                   const missed = isMissedDay(day.date, readDays)
+                  const isToday = normalizeDate(day.date).getTime() === today.getTime()
 
                   return (
                     <div
                       key={dayIndex}
-                      className={`day-dot ${isRead ? 'filled' : 'outlined'} ${missed ? 'missed' : ''}`}
+                      className={`day-dot ${isRead ? 'filled' : 'outlined'} ${missed ? 'missed' : ''} ${isToday ? 'today' : ''}`}
                       style={isRead ? {
                         backgroundColor: dayColor,
                         borderColor: dayColor

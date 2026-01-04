@@ -104,6 +104,20 @@
   transform: scale(1.1);
 }
 
+.day-dot.today {
+  box-shadow: 0 0 8px rgba(25, 123, 189, 0.6), 0 0 12px rgba(25, 123, 189, 0.4);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(25, 123, 189, 0.6), 0 0 16px rgba(25, 123, 189, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 4px rgba(25, 123, 189, 0.8), 0 0 16px rgba(25, 123, 189, 0.6);
+  }
+}
+
 .day-empty {
   width: 16px;
   height: 16px;

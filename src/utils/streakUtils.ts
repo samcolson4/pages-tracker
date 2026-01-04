@@ -2,7 +2,8 @@ import { formatDateKey, normalizeDate, getYearStart, getYearEnd } from './dateUt
 import { YEAR } from '../constants'
 
 /**
- * Calculate current streak: count backwards from today, stop at first unclicked day
+ * Calculate current streak: count backwards from today, stop at first unclicked day in the past
+ * Today is optional - if not clicked, we still count the streak up to yesterday
  */
 export const calculateStreak = (
   readDays: Map<string, string>,
@@ -25,6 +26,7 @@ export const calculateStreak = (
   // Count backwards from today
   while (checkDate >= startOfYear) {
     const dateKey = formatDateKey(checkDate)
+    const isToday = checkDate.getTime() === today.getTime()
 
     // If this day is clicked, increment streak and continue
     if (readDays.has(dateKey)) {
@@ -33,8 +35,16 @@ export const calculateStreak = (
       checkDate.setDate(checkDate.getDate() - 1)
       checkDate.setHours(0, 0, 0, 0)
     } else {
-      // Stop counting when we hit a day that wasn't clicked (sad face)
-      break
+      // If it's today and not clicked, don't break - just move to yesterday
+      // The streak should only break on past days that weren't clicked
+      if (isToday) {
+        // Move to previous day without incrementing streak
+        checkDate.setDate(checkDate.getDate() - 1)
+        checkDate.setHours(0, 0, 0, 0)
+      } else {
+        // Stop counting when we hit a past day that wasn't clicked
+        break
+      }
     }
   }
 
